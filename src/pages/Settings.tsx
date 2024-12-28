@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Github, Twitter, Facebook, Linkedin, Instagram, Send, Globe, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import QRCodeGenerator from '@/components/QRCodeGenerator';
+import { ProfileService, UserProfile } from '../services/profileService';
 
 const SOCIAL_PLATFORMS = [
   { id: 'github', name: 'GitHub', icon: Github },
@@ -115,20 +116,34 @@ function SortableItem({ link, updateSocialLink, removeSocialLink }) {
 }
 
 const Settings = () => {
-  const [profile, setProfile] = useState<UserProfile>(() => {
-    const savedProfile = localStorage.getItem('userProfile');
-    return savedProfile ? JSON.parse(savedProfile) : {
-      name: '',
-      email: '',
-      phone: '',
-      role: '',
-      bio: '',
-      avatar: '',
-      imageShape: 'circle',
-      imagePosition: 50,
-      socialLinks: []
+  const [profile, setProfile] = useState<UserProfile>(() => ({
+    name: '',
+    email: '',
+    phone: '',
+    role: '',
+    bio: '',
+    avatar: '',
+    imageShape: 'circle',
+    imagePosition: 50,
+    socialLinks: []
+  }));
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    // Load profile from database
+    const loadProfile = async () => {
+      try {
+        const savedProfile = await ProfileService.getProfile();
+        if (savedProfile) {
+          setProfile(savedProfile);
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
     };
-  });
+    loadProfile();
+  }, []);
 
   const moveSocialLink = (id: string, direction: 'up' | 'down') => {
     const index = profile.socialLinks.findIndex(link => link.id === id);
@@ -188,12 +203,26 @@ const Settings = () => {
     });
   };
 
-  const handleSave = () => {
-    localStorage.setItem('userProfile', JSON.stringify(profile));
-    toast({
-      title: "Settings saved successfully",
-      duration: 2000,
-    });
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await ProfileService.saveProfile(profile);
+      // Also save to localStorage for immediate local access
+      localStorage.setItem('userProfile', JSON.stringify(profile));
+      toast({
+        title: "Success",
+        description: "Your profile has been saved.",
+      });
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -451,7 +480,7 @@ const Settings = () => {
         </Card>
 
         <div className="flex justify-end">
-          <Button onClick={handleSave} size="lg">
+          <Button onClick={handleSave} size="lg" loading={isSaving}>
             Save Settings
           </Button>
         </div>

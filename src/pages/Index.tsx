@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
 import { toast } from '@/components/ui/use-toast';
 import ThemeSelector from '@/components/ThemeSelector';
+import { ProfileService, UserProfile } from '../services/profileService';
 
 type UserProfile = {
   name: string;
@@ -39,10 +40,26 @@ const Index = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
+    // Try to load from localStorage first for immediate display
     const savedProfile = localStorage.getItem('userProfile');
     if (savedProfile) {
       setProfile(JSON.parse(savedProfile));
     }
+
+    // Then load from database
+    const loadProfile = async () => {
+      try {
+        const dbProfile = await ProfileService.getProfile();
+        if (dbProfile) {
+          setProfile(dbProfile);
+          // Update localStorage with latest data
+          localStorage.setItem('userProfile', JSON.stringify(dbProfile));
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    };
+    loadProfile();
   }, []);
 
   const handleCopyEmail = () => {
