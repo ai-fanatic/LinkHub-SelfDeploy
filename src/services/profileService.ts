@@ -33,7 +33,7 @@ export class ProfileService {
                 .addColumn('avatar', 'text')
                 .addColumn('image_shape', 'varchar')
                 .addColumn('image_position', 'integer')
-                .addColumn('social_links', 'jsonb')
+                .addColumn('social_links', 'jsonb', (col) => col.notNull().defaultTo('[]'))
                 .addColumn('created_at', 'timestamp', (col) => 
                     col.notNull().defaultTo('now()'))
                 .addColumn('updated_at', 'timestamp', (col) => 
@@ -48,47 +48,70 @@ export class ProfileService {
     }
 
     static async getProfile() {
-        const result = await db
-            .selectFrom('profiles')
-            .selectAll()
-            .orderBy('created_at', 'desc')
-            .limit(1)
-            .executeTakeFirst();
+        try {
+            const result = await db
+                .selectFrom('profiles')
+                .selectAll()
+                .orderBy('created_at', 'desc')
+                .limit(1)
+                .executeTakeFirst();
 
-        if (!result) return null;
+            if (!result) return null;
 
-        return {
-            ...result,
-            imageShape: result.image_shape,
-            imagePosition: result.image_position,
-            socialLinks: result.social_links ? JSON.parse(result.social_links) : [], 
-        };
+            // Convert database record to UserProfile format
+            const profile: UserProfile = {
+                id: result.id,
+                name: result.name,
+                role: result.role || undefined,
+                bio: result.bio || undefined,
+                email: result.email || undefined,
+                phone: result.phone || undefined,
+                avatar: result.avatar || undefined,
+                imageShape: result.image_shape as UserProfile['imageShape'],
+                imagePosition: result.image_position || undefined,
+                // Parse social_links only if it's a string
+                socialLinks: typeof result.social_links === 'string' 
+                    ? JSON.parse(result.social_links)
+                    : (result.social_links || [])
+            };
+
+            return profile;
+        } catch (error) {
+            console.error('Error in getProfile:', error);
+            throw error;
+        }
     }
 
     static async saveProfile(profile: UserProfile) {
-        await db.transaction().execute(async (trx) => {
-            // Delete existing profile if exists
-            await trx
-                .deleteFrom('profiles')
-                .execute();
+        try {
+            await db.transaction().execute(async (trx) => {
+                // Delete existing profile if exists
+                await trx
+                    .deleteFrom('profiles')
+                    .execute();
 
-            // Insert new profile
-            await trx
-                .insertInto('profiles')
-                .values({
-                    name: profile.name,
-                    role: profile.role,
-                    bio: profile.bio,
-                    email: profile.email,
-                    phone: profile.phone,
-                    avatar: profile.avatar,
-                    image_shape: profile.imageShape,
-                    image_position: profile.imagePosition,
-                    social_links: JSON.stringify(profile.socialLinks), 
-                })
-                .execute();
-        });
+                // Insert new profile
+                await trx
+                    .insertInto('profiles')
+                    .values({
+                        name: profile.name,
+                        role: profile.role || null,
+                        bio: profile.bio || null,
+                        email: profile.email || null,
+                        phone: profile.phone || null,
+                        avatar: profile.avatar || null,
+                        image_shape: profile.imageShape || null,
+                        image_position: profile.imagePosition || null,
+                        // Ensure social_links is stored as a JSON string
+                        social_links: JSON.stringify(profile.socialLinks || [])
+                    })
+                    .execute();
+            });
 
-        return true;
+            return true;
+        } catch (error) {
+            console.error('Error in saveProfile:', error);
+            throw error;
+        }
     }
 }

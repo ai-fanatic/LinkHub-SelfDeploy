@@ -23,10 +23,26 @@ interface LinkTagsTable {
     tag_id: number;
 }
 
+interface ProfilesTable {
+    id: number;
+    name: string;
+    role: string | null;
+    bio: string | null;
+    email: string | null;
+    phone: string | null;
+    avatar: string | null;
+    image_shape: string | null;
+    image_position: number | null;
+    social_links: unknown;
+    created_at: Date;
+    updated_at: Date;
+}
+
 interface Database {
     links: LinksTable;
     tags: TagsTable;
     link_tags: LinkTagsTable;
+    profiles: ProfilesTable;
 }
 
 if (!process.env.DATABASE_URL) {
@@ -78,6 +94,26 @@ export async function initializeDatabase() {
             .addColumn('tag_id', 'integer', (col) => 
                 col.references('tags.id').onDelete('cascade'))
             .addPrimaryKeyConstraint('link_tags_primary_key', ['link_id', 'tag_id'])
+            .execute();
+
+        // Create profiles table
+        await db.schema
+            .createTable('profiles')
+            .ifNotExists()
+            .addColumn('id', 'serial', (col) => col.primaryKey())
+            .addColumn('name', 'varchar', (col) => col.notNull())
+            .addColumn('role', 'varchar')
+            .addColumn('bio', 'text')
+            .addColumn('email', 'varchar')
+            .addColumn('phone', 'varchar')
+            .addColumn('avatar', 'varchar')
+            .addColumn('image_shape', 'varchar')
+            .addColumn('image_position', 'integer')
+            .addColumn('social_links', 'jsonb')
+            .addColumn('created_at', 'timestamp', (col) => 
+                col.notNull().defaultTo('now()'))
+            .addColumn('updated_at', 'timestamp', (col) => 
+                col.notNull().defaultTo('now()'))
             .execute();
 
         console.log('Database tables initialized successfully');
