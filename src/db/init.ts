@@ -2,6 +2,11 @@ import { initializeDatabase } from './neon-db';
 import { ProfileService } from '../services/profileService';
 
 export async function initializeApp() {
+    if (!process.env.DATABASE_URL) {
+        console.error('DATABASE_URL is not set in environment variables');
+        return;
+    }
+
     try {
         // Initialize main database tables
         await initializeDatabase();
@@ -12,6 +17,6 @@ export async function initializeApp() {
         console.log('Database initialization completed successfully');
     } catch (error) {
         console.error('Error initializing database:', error);
-        throw error;
+        console.error('Application will continue without database functionality');
     }
 }

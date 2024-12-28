@@ -4,14 +4,12 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   server: {
-    host: "::",
-    port: 8080,
+    port: 8083,
   },
   plugins: [
     react(),
-    mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
   resolve: {
@@ -19,7 +17,12 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Add environment variables to be available in the client
   define: {
-    'process.env.DATABASE_URL': JSON.stringify(process.env.DATABASE_URL),
+    // Explicitly define process.env
+    'process.env': JSON.stringify({
+      DATABASE_URL: process.env.DATABASE_URL,
+      NODE_ENV: process.env.NODE_ENV,
+    })
   },
-}));
+});

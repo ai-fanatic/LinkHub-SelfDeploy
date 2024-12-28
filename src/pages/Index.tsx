@@ -35,32 +35,97 @@ const PLATFORM_ICONS = {
   other: Globe,
 };
 
-const Index = () => {
+export default function Index() {
   const { currentTheme } = useTheme();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Try to load from localStorage first for immediate display
-    const savedProfile = localStorage.getItem('userProfile');
-    if (savedProfile) {
-      setProfile(JSON.parse(savedProfile));
-    }
-
-    // Then load from database
     const loadProfile = async () => {
+      console.log('Starting to load profile...');
+      setLoading(true);
+      setError(null);
+
+      // Try to load from localStorage first
       try {
-        const dbProfile = await ProfileService.getProfile();
-        if (dbProfile) {
-          setProfile(dbProfile);
-          // Update localStorage with latest data
-          localStorage.setItem('userProfile', JSON.stringify(dbProfile));
+        const savedProfile = localStorage.getItem('userProfile');
+        console.log('LocalStorage profile:', savedProfile);
+        if (savedProfile) {
+          const parsedProfile = JSON.parse(savedProfile);
+          setProfile(parsedProfile);
+          console.log('Profile loaded from localStorage:', parsedProfile);
         }
       } catch (error) {
-        console.error('Error loading profile:', error);
+        console.error('Error loading from localStorage:', error);
+      }
+
+      // Then try to load from database
+      try {
+        console.log('Database URL:', process.env.DATABASE_URL);
+        if (!process.env.DATABASE_URL) {
+          console.log('No database URL configured');
+          setLoading(false);
+          return;
+        }
+
+        const dbProfile = await ProfileService.getProfile();
+        console.log('Database profile:', dbProfile);
+        
+        if (dbProfile) {
+          setProfile(dbProfile);
+          localStorage.setItem('userProfile', JSON.stringify(dbProfile));
+          console.log('Profile updated from database');
+        }
+      } catch (error) {
+        console.error('Error loading from database:', error);
+        setError('Failed to load profile from database');
+      } finally {
+        setLoading(false);
       }
     };
+
     loadProfile();
   }, []);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  // Show error state if there's an error and no profile
+  if (error && !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600">Error Loading Profile</h1>
+          <p className="mt-2 text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state if no profile
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Welcome to LinkHub</h1>
+          <p className="mt-2 text-gray-600">Please set up your profile in the settings</p>
+          <Link to="/settings" className="mt-4 inline-block">
+            <Button>
+              <Settings className="h-4 w-4 mr-2" />
+              Set Up Profile
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const handleCopyEmail = () => {
     if (profile?.email) {
@@ -196,6 +261,4 @@ END:VCARD`;
       <ThemeSelector />
     </div>
   );
-};
-
-export default Index;
+}

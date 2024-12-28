@@ -61,7 +61,7 @@ export class ProfileService {
             ...result,
             imageShape: result.image_shape,
             imagePosition: result.image_position,
-            socialLinks: result.social_links,
+            socialLinks: result.social_links ? JSON.parse(result.social_links) : [], 
         };
     }
 
@@ -84,7 +84,7 @@ export class ProfileService {
                     avatar: profile.avatar,
                     image_shape: profile.imageShape,
                     image_position: profile.imagePosition,
-                    social_links: profile.socialLinks,
+                    social_links: JSON.stringify(profile.socialLinks), 
                 })
                 .execute();
         });

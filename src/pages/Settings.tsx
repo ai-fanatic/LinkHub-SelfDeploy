@@ -133,13 +133,27 @@ const Settings = () => {
   useEffect(() => {
     // Load profile from database
     const loadProfile = async () => {
+      if (!process.env.DATABASE_URL) {
+        console.log('Database URL not configured, using localStorage only');
+        return;
+      }
+
       try {
-        const savedProfile = await ProfileService.getProfile();
-        if (savedProfile) {
-          setProfile(savedProfile);
+        const dbProfile = await ProfileService.getProfile();
+        if (dbProfile) {
+          setProfile(dbProfile);
         }
       } catch (error) {
-        console.error('Error loading profile:', error);
+        console.error('Error loading profile from database:', error);
+        // Try loading from localStorage as fallback
+        const savedProfile = localStorage.getItem('userProfile');
+        if (savedProfile) {
+          try {
+            setProfile(JSON.parse(savedProfile));
+          } catch (e) {
+            console.error('Error parsing localStorage profile:', e);
+          }
+        }
       }
     };
     loadProfile();
@@ -206,18 +220,27 @@ const Settings = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await ProfileService.saveProfile(profile);
-      // Also save to localStorage for immediate local access
+      // Always save to localStorage
       localStorage.setItem('userProfile', JSON.stringify(profile));
-      toast({
-        title: "Success",
-        description: "Your profile has been saved.",
-      });
+
+      // Save to database if configured
+      if (process.env.DATABASE_URL) {
+        await ProfileService.saveProfile(profile);
+        toast({
+          title: "Success",
+          description: "Your profile has been saved to the database.",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Your profile has been saved locally.",
+        });
+      }
     } catch (error) {
       console.error('Error saving profile:', error);
       toast({
-        title: "Error",
-        description: "Failed to save profile. Please try again.",
+        title: "Warning",
+        description: "Profile saved locally but failed to save to database. Your changes may not be visible to others.",
         variant: "destructive",
       });
     } finally {
