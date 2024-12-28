@@ -29,14 +29,14 @@ interface Database {
     link_tags: LinkTagsTable;
 }
 
-if (!process.env.NEON_DATABASE_URL) {
-    throw new Error('NEON_DATABASE_URL environment variable is not set');
+if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is not set');
 }
 
 // Create database instance
 export const db = new Kysely<Database>({
     dialect: new NeonDialect({
-        connectionString: process.env.NEON_DATABASE_URL,
+        connectionString: process.env.DATABASE_URL,
     }),
 });
 
