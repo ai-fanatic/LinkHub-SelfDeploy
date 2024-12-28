@@ -1,4 +1,4 @@
-import { db } from '../db/neon-db';
+import { db } from '../db/vercel-postgres';
 
 export interface Link {
     id?: number;
