@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import QRCodeGenerator from '@/components/QRCodeGenerator';
 import { ProfileService, UserProfile } from '../services/profileService';
+import { PasswordPrompt } from "@/components/PasswordPrompt";
 
 const SOCIAL_PLATFORMS = [
   { id: 'github', name: 'GitHub', icon: Github },
@@ -116,6 +117,7 @@ function SortableItem({ link, updateSocialLink, removeSocialLink }) {
 }
 
 const Settings = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [profile, setProfile] = useState<UserProfile>(() => ({
     name: '',
     email: '',
@@ -131,33 +133,37 @@ const Settings = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    // Load profile from database
-    const loadProfile = async () => {
-      if (!process.env.DATABASE_URL) {
-        console.log('Database URL not configured, using localStorage only');
-        return;
-      }
+    // Check if already authenticated in this session
+    const authenticated = sessionStorage.getItem('settingsAuthenticated') === 'true';
+    setIsAuthenticated(authenticated);
 
-      try {
-        const dbProfile = await ProfileService.getProfile();
-        if (dbProfile) {
-          setProfile(dbProfile);
-        }
-      } catch (error) {
-        console.error('Error loading profile from database:', error);
-        // Try loading from localStorage as fallback
-        const savedProfile = localStorage.getItem('userProfile');
-        if (savedProfile) {
-          try {
-            setProfile(JSON.parse(savedProfile));
-          } catch (e) {
-            console.error('Error parsing localStorage profile:', e);
-          }
-        }
-      }
-    };
-    loadProfile();
+    if (authenticated) {
+      loadProfile();
+    }
   }, []);
+
+  const loadProfile = async () => {
+    try {
+      const savedProfile = await ProfileService.getProfile();
+      if (savedProfile) {
+        setProfile(savedProfile);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!isAuthenticated) {
+    return <PasswordPrompt onSuccess={() => {
+      setIsAuthenticated(true);
+      loadProfile();
+    }} />;
+  }
 
   const moveSocialLink = (id: string, direction: 'up' | 'down') => {
     const index = profile.socialLinks.findIndex(link => link.id === id);
